@@ -3,22 +3,28 @@ module IObus (
     input wire clk,
     input wire we,
     input wire [15:2] adr,
-    input wire wdata,
+    input wire [31:0] wdata,
 
-    input wire [31:0] switch,
+    input wire [23:0] switch,
 
     output reg [31:0] spo,
 
-    output reg [31:0] led,
-    output reg [31:0] ledNumber
+    output reg [23:0] led,
+    output reg [31:0] digit
 );
-    reg [31:0] memOutput;
-    reg [15:0] adr_ext={adr,00};
+    wire [31:0] memOutput;
+    reg [15:0] adr_ext;
+
+    always @(*) begin
+        adr_ext[15:2]=adr;
+        adr_ext[1:0]=0;
+        
+    end
 
     //read
     always @(*) begin
         case (adr_ext)
-            16'hf000: spo=ledNumber; 
+            16'hf000: spo=digit; 
             16'hf060: spo=led;
             16'hf070: spo=switch;
             16'hf010,16'hf078: spo=0;
@@ -29,20 +35,29 @@ module IObus (
     //write
     always @(posedge clk) begin
         if (rst) begin
-            ledNumber=0;
+            digit=0;
             led=0;
-            switch=0;
-            memOutput=0;
-            spo=0;
         end else if (we) begin
             case (adr_ext)
                 16'hf000: begin
+                    digit=wdata;
+                end 
+                16'hf060: begin
+                    led=wdata;
+                end
+            endcase
+        end
+    end
+
+    //control WEn
+    always @(*) begin
+        if (we) begin
+            case (adr_ext)
+                16'hf000: begin
                     WEn=0;
-                    ledNumber=wdata;
                 end 
                 16'hf060: begin
                     WEn=0;
-                    led=wdata;
                 end
                 16'hf010,16'hf078,16'hf070: WEn=0;
                 default: begin
@@ -54,12 +69,12 @@ module IObus (
         end
     end
 
+    wire [31:0] waddr_tmp = adr - 16'h4000;
     reg WEn;    //control dram writing
-    data_mem dmem(
-        // .clk    (clk_g),
+    dram u_dram(
         .clk    (clk),
         .we    (WEn),
-        .a      (adr),
+        .a      (waddr_tmp[15:2]),
         .d      (wdata),
         .spo    (memOutput)
     );

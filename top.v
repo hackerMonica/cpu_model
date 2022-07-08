@@ -8,6 +8,8 @@ module top (
     // output [31:0] debug_wb_value        // WB阶段写入寄存器的�?? (若wb_ena或wb_have_inst=0，此项可为任意�??)
     input wire clk,
     input rst_i,
+    input  [23:0] switch,
+    output [23:0] led,
     output wire led0_en_o,
     output wire led1_en_o,
     output wire led2_en_o,
@@ -130,8 +132,7 @@ module top (
         .wR     (inst[11:7]),
         .wD     (wD),
         .rD1    (rD1),
-        .rD2    (rD2),
-        .result (result)
+        .rD2    (rD2)
     );
 
     CTRL u_CTRL(
@@ -159,15 +160,15 @@ module top (
     .C          (C)
     );
 
-    wire [31:0] waddr_tmp = C - 16'h4000;
+    // wire [31:0] waddr_tmp = C - 16'h4000;
     // wire [31:0] waddr_tmp = C;
-    dram U_dram(
-        .clk    (clk_g),
-        .we    (WEn),
-        .a      (waddr_tmp[15:2]),
-        .d      (wdin),
-        .spo    (rd)
-    );
+    // dram U_dram(
+    //     .clk    (clk_g),
+    //     .we    (WEn),
+    //     .a      (waddr_tmp[15:2]),
+    //     .d      (wdin),
+    //     .spo    (rd)
+    // );
     // data_mem dmem(
     //     .clk    (clk),
     //     .we    (WEn),
@@ -176,10 +177,22 @@ module top (
     //     .spo    (rd)
     // );
   
-    wire [31:0] result;
+    IObus u_IObus(
+        .rst    (rst),
+        .clk    (clk_g),
+        .we     (WEn),
+        .adr    (C[15:2]),
+        .wdata  (wdin),     
+        .switch (switch),
+        .spo    (rd),
+        .led    (led),
+        .digit  (digit)
+    );
+
+    wire [31:0] digit;
     led_display_ctrl u_led_display(
         .clkg    (clk_g),
-        .result (result),
+        .result (digit),
 	    .led0_en_o (led0_en_o),
         .led1_en_o (led1_en_o),
         .led2_en_o (led2_en_o),
